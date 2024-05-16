@@ -13,7 +13,8 @@ class SimpleNIOHTTPServer implements HTTPServerHandler {
     //TODO 
     public SimpleNIOHTTPServer(String bindAddress, int bindPort){
         // Implement constructor
-        
+        this.bindAddress = bindAddress;
+        this.bindPort = bindPort;
     }
 
     // TODO
