@@ -1,5 +1,8 @@
 import java.nio.channels.*;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Set;
+
 class SimpleNIOHTTPServer implements HTTPServerHandler {
     
     /*
@@ -39,6 +42,27 @@ class SimpleNIOHTTPServer implements HTTPServerHandler {
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
             System.out.println("HTTP server listening on " + serverSocketChannel);
+
+            //handle requests through the loop
+
+            while(true) {
+                selector.select();
+                Set<SelectionKey> selectedKeys = selector.selectedKeys();
+                Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+
+                while (keyIterator.hasNext()) {
+                    SelectionKey key = keyIterator.next();
+                    keyIterator.remove();
+                    if (key.isAcceptable()) {
+                        // Handle new connection
+                        //acceptNewConnection(key, selector);
+
+                    } else if (key.isReadable()) {
+                        // Handle new connection
+                        //handleRequest(key);
+                    }
+                }
+            }
             
         } catch (IOException e) {
             System.out.println(e);
