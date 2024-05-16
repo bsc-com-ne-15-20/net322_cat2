@@ -32,6 +32,7 @@ class SimpleNIOHTTPServer implements HTTPServerHandler {
      * 
      * Wrapper instance method for running server
      */
+    @Override
     public void run(){
         // Implement run method
         Selector selector ;
@@ -64,7 +65,7 @@ class SimpleNIOHTTPServer implements HTTPServerHandler {
 
                     } else if (key.isReadable()) {
                         // Handle new connection
-                        handleRequest(key);
+                         readRequest(key);
                     }
                 }
             }
@@ -85,77 +86,91 @@ class SimpleNIOHTTPServer implements HTTPServerHandler {
     }
 
     // defining read reuest handler
-    private void handleRequest(SelectionKey key) throws IOException {
+    private void readRequest(SelectionKey key) throws IOException {
         SocketChannel socketChannel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024);
-        int byteReader = socketChannel.read(buffer);
+        int bytesRead = socketChannel.read(buffer);
 
-        if (byteReader == -1) {
+        if (bytesRead == -1) {
             socketChannel.close();
             return;
         }
 
         buffer.flip();
-        String request = new String(buffer.array(), 0, byteReader);
-        //String response  = proccessRequest(request);
-        String [] requestLines = request.split("\r\n");
+        String request = new String(buffer.array(), 0, bytesRead);
+        String response = processRequest(request);
+
+        ByteBuffer responseBuffer = ByteBuffer.wrap(response.getBytes());
+        socketChannel.write(responseBuffer);
+        socketChannel.close();
+    }
+
+    private String processRequest(String request) throws IOException {
+        String[] requestLines = request.split("\r\n");
         String requestLine = requestLines[0];
         String[] requestParts = requestLine.split(" ");
-        String method = requestLines[0];
-        String path = requestLines[1];
+        String method = requestParts[0];
+        String path = requestParts[1];
+
         if ("GET".equals(method)) {
-                if ("/".equals(path)) {
-                path = "/index.html";
-            }
-
-            Path filePath = Paths.get("templates" + path);
-            if (Files.exists(filePath)) {
-                String content = new String(Files.readAllBytes(filePath));
-                System.out.println("HTTP/1.1 200 OK\r\nContent-Length: " + content.length() + "\r\n\r\n" + content);
-            }else
-
-            System.out.println( "HTTP/1.1 404 Not Found\r\n\r\n");
-
+            return handleGet(path);
         } else if ("POST".equals(method)) {
-           
-                StringBuilder body = new StringBuilder();
-                boolean isBody = false;
+            return handlePost(requestLines);
+        }
 
-                for (String line : requestLines) {
-                    if (isBody) {
-                        body.append(line);
-                    }
-                    if (line.isEmpty()) {
-                        isBody = true;
-                    }
-                }
-
-                String[] bodyParams = body.toString().split("&");
-                String username = null;
-                String email = null;
-
-                for (String param : bodyParams) {
-                    String[] keyValue = param.split("=");
-                    if (keyValue.length == 2) {
-                        if ("username".equals(keyValue[0])) {
-                            username = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
-                        } else if ("email".equals(keyValue[0])) {
-                            email = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
-                        }
-                    }
-                }
-
-                if (username != null && email != null) {
-                    Files.write(Paths.get("db.txt"), (username + " " + email + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-                    System.out.println("HTTP/1.1 200 OK\r\n\r\nSuccess");
-                }else
-                System.out.println("HTTP/1.1 400 Bad Request\r\n\r\n");
-
-             }else 
-             System.out.println("HTTP/1.1 405 Method Not Allowed\r\n\r\n");
-
-                
-        
+        return "HTTP/1.1 405 Method Not Allowed\r\n\r\n";
     }
+    private String handleGet(String path) throws IOException {
+        if ("/".equals(path)) {
+            path = "/index.html";
+        }
+
+        Path filePath = Paths.get("templates" + path);
+        if (Files.exists(filePath)) {
+            String content = new String(Files.readAllBytes(filePath));
+            return "HTTP/1.1 200 OK\r\nContent-Length: " + content.length() + "\r\n\r\n" + content;
+        }
+
+        return "HTTP/1.1 404 Not Found\r\n\r\n";
+    }
+
+    private String handlePost(String[] requestLines) throws IOException {
+        StringBuilder body = new StringBuilder();
+        boolean isBody = false;
+
+        for (String line : requestLines) {
+            if (isBody) {
+                body.append(line);
+            }
+            if (line.isEmpty()) {
+                isBody = true;
+            }
+        }
+
+        String[] bodyParams = body.toString().split("&");
+        String username = null;
+        String email = null;
+
+        for (String param : bodyParams) {
+            String[] keyValue = param.split("=");
+            if (keyValue.length == 2) {
+                if ("username".equals(keyValue[0])) {
+                    username = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
+                } else if ("email".equals(keyValue[0])) {
+                    email = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
+                }
+            }
+        }
+
+        if (username != null && email != null) {
+            Files.write(Paths.get("db.txt"), (username + " " + email + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+            return "HTTP/1.1 200 OK\r\n\r\nSuccess";
+        }
+
+        return "HTTP/1.1 400 Bad Request\r\n\r\n";
+    }
+
+
+
     
 }
