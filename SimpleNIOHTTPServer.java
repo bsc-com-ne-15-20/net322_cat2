@@ -1,4 +1,5 @@
-
+import java.nio.channels.*;
+import java.io.IOException;
 class SimpleNIOHTTPServer implements HTTPServerHandler {
     
     /*
@@ -24,6 +25,24 @@ class SimpleNIOHTTPServer implements HTTPServerHandler {
      * Wrapper instance method for running server
      */
     public void run(){
+        // Implement run method
+        Selector selector ;
+        ServerSocketChannel serverSocketChannel;
+        try{
+            //opening channel and selector
+            selector = Selector.open();
+            serverSocketChannel = ServerSocketChannel.open();
+
+            // binding address and port
+            serverSocketChannel.bind( new java.net.InetSocketAddress(bindAddress,bindPort));
+            serverSocketChannel.configureBlocking(false);
+            serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+            System.out.println("HTTP server listening on " + serverSocketChannel);
+            
+        } catch (IOException e) {
+            System.out.println(e);
+        }
     
     };
     
